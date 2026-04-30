@@ -1,0 +1,119 @@
+-- SQL INSERT para productos con stock en Supabase
+-- 34 productos únicos con stock real > 0
+
+INSERT INTO public.productos
+  (codigo, nombre, categoria, ubicacion_almacen, cantidad_por_caja, precio_venta_real, precio_sunat, activo)
+VALUES
+  ('DB-688G', 'BAÑERA / BEBE / DOUX BEBE / DEEP BLUE / PINK', 'BANERA', 'DEPARTAMENTO', 4, 100.0, 56.0, true),
+  ('DB-2019XL', 'TRICICLO SIN GUIADOR / BEBE / DOUX BEBE', 'TRICICLO', 'HIELO', 4, 100.0, 36.3, true),
+  ('681', 'JUGUETE GIMNASIO / BEBE / DOUX BEBE / ROSADO', 'GIMNASIO', 'HIELO', 12, 65.0, 16.6, true),
+  ('DB-345GF', 'BACIN BABY POTTY', 'BACIN', 'HIELO', 4, 45.0, NULL, true),
+  ('DB-5558MD', 'COJIN DE BAÑO / BEBE / DOUX BEBE', 'COJIN', 'HIELO', NULL, NULL, 7.7, true),
+  ('DB-355F', 'ADAPTADOR DE INODORO CON ESCALERA / BEBE / DOUX BEBE / GREY', 'ASIENTO', 'HIELO', 3, 55.0, 25.0, true),
+  ('DB-2025GP', 'TRICICLO GP / BEBE / DOUX BEBE', 'TRICICLO', 'HIELO', 1, 175.0, 65.3, true),
+  ('DB-395F', 'ADAPTADOR DE INODORO CON ESCALERA Y ASIENTO / BEBE / DOUX BEBE', 'ASIENTO', 'HIELO', 4, 50.0, 23.0, true),
+  ('DB-999VL', 'SILLA DE COMER / BEBE / DOUX BEBE', 'SILLA DE COMER', 'HIELO', 1, 200.0, 120.0, true),
+  ('DB-BB10', 'Baby Jumping Chair', 'Baby Jumping', 'HIELO', 5, 105.0, 45.8, true),
+  ('DB-290MF', 'MESA Y SILLA 290 / BEBE / DOUX BEBE', 'MESA Y SILLA', 'HIELO', 1, 240.0, 54.28, true),
+  ('DB-GF001', 'CUNA COLECHO PARA PROTECCION', 'CORRAL', 'HIELO', 1, 110.0, 67.97, true),
+  ('668-34', 'GIMNASIO 34 / BEBE / DOUX BEBE', 'GIMNASIO', 'HIELO', 8, 100.0, 37.88, true),
+  ('668-35', 'GIMNASIO 35 / BEBE / DOUX BEBE', 'GIMNASIO', 'HIELO', 8, 100.0, 37.88, true),
+  ('68123', 'SILLA MECEDORA 123 / BEBE / DOUX BEBE', 'SILLA', 'HIELO', 6, 85.0, 50.5, true),
+  ('DB-2021HX', 'BACIN BABY POTTY', 'BACIN', 'HIELO', 4, 75.0, NULL, true),
+  ('DB-344VL', 'BAÑERA CON TAPA TERMOMETRO Y COJIN / ADULTO / DOUX BEBE', 'BANERA', 'HIELO', 1, 250.0, 55.0, true),
+  ('DB-366', 'BABY STROLLER / BEBE / DOUX BEBE', 'COCHE', 'HIELO', 1, 650.0, 145.77, true),
+  ('DB-777WF', 'MESA EDUCATIVA PARA ARMAR LEGOS', 'MESA Y SILLA', 'HIELO', 1, 240.0, 51.75, true),
+  ('DB-FC01', 'MESA PARA CAMBIAR PAÑALES DOUX BEBE', 'CAMBIADOR DE PAÑALES', 'HIELO', 1, 235.0, 130.0, true),
+  ('CMQ-59A', 'CORRAL PARA NIÑOS 59 / BEBE / DOUX BEBE', 'CORRAL', 'DEPARTAMENTO', 18, NULL, 41.3, true),
+  ('CMQ-66A', 'CORRAL PARA NIÑOS 66 / BEBE / DOUX BEBE / AZUL / PINK', 'CORRAL', 'DEPARTAMENTO', 18, NULL, 41.3, true),
+  ('8808C', 'SILLA ALTA MODELO NORDICO / BEBE / SIN MARCA', 'SILLA', 'HIELO', 1, NULL, 8.0, true),
+  ('8826', 'TABLERO DE DIBUJO / BEBE / SIN MARCA', 'TABLERO', 'HIELO', 1, NULL, 41.3, true),
+  ('8818', 'JUEGO DE MESA Y SILLA 18 / BEBE / SIN MARCA', 'MESA Y SILLA', 'HIELO', 1, 220.0, 29.5, true),
+  ('DB-795G', 'COCHE BABY STROLLER', 'COCHE', 'HIELO', 1, 460.0, NULL, true),
+  ('BS-8832P+33C', 'ESCRITORIO BASICO RECTANGULAR', 'MESA Y SILLA', 'HIELO', 1, 180.0, 25.96, true),
+  ('BS-8831P+33C', 'ESCRITORIO 3 EN 1: PIZARRA Y ACTIVIDADES (ARENERO, POZOS, ETC)', 'MESA Y SILLA', 'HIELO', 1, 180.0, 24.78, true),
+  ('BS-8836', 'MESA PARA NIÑOS Y SILLA', 'MESA Y SILLA', 'HIELO', 1, 190.0, 27.14, true),
+  ('VG-800FC', 'COCHE BASTON VOYAGE / BEBE / DOUX BEBE', 'COCHE', 'DEPARTAMENTO', NULL, NULL, 140.0, true),
+  ('BS-8830+33C', 'ESCRITORIO 3 EN 1: PIZARRA, MESA LEGOS Y ACTIVIDADES.', 'MESA Y SILLA', 'HIELO', 1, 185.0, 25.96, true),
+  ('B3-8851', 'MESA MULTIFUNCIONAL ESPECIAL PARA ESTUDIOS', 'MESA Y SILLA', 'HIELO', 1, 190.0, 35.4, true),
+  ('BS-8831W+33C', 'ESCRITORIO BASICO OVALADO PARA NIÑOS', 'MESA Y SILLA', 'HIELO', 1, 220.0, 27.14, true),
+  ('BS-8905', 'MECEDORA CABALLO BALANCIN / BEBE / SIN MARCA', 'JUGUETE', 'BAMBAS', 1, 100.0, 45.0, true)
+;
+
+-- Insertar stock inicial
+INSERT INTO public.stock (producto_id, codigo, stock_real, stock_sunat)
+SELECT id, codigo,
+  CASE
+  WHEN codigo = 'DB-688G' THEN 2500
+  WHEN codigo = 'DB-2019XL' THEN 1432
+  WHEN codigo = '681' THEN 1560
+  WHEN codigo = 'DB-345GF' THEN 1196
+  WHEN codigo = 'DB-5558MD' THEN 986
+  WHEN codigo = 'DB-355F' THEN 1509
+  WHEN codigo = 'DB-2025GP' THEN 722
+  WHEN codigo = 'DB-395F' THEN 1284
+  WHEN codigo = 'DB-999VL' THEN 683
+  WHEN codigo = 'DB-BB10' THEN 440
+  WHEN codigo = 'DB-290MF' THEN 365
+  WHEN codigo = 'DB-GF001' THEN 343
+  WHEN codigo = '668-34' THEN 304
+  WHEN codigo = '668-35' THEN 296
+  WHEN codigo = '68123' THEN 320
+  WHEN codigo = 'DB-2021HX' THEN 128
+  WHEN codigo = 'DB-344VL' THEN 222
+  WHEN codigo = 'DB-366' THEN 204
+  WHEN codigo = 'DB-777WF' THEN 175
+  WHEN codigo = 'DB-FC01' THEN 97
+  WHEN codigo = 'CMQ-59A' THEN 72
+  WHEN codigo = 'CMQ-66A' THEN 68
+  WHEN codigo = '8808C' THEN 64
+  WHEN codigo = '8826' THEN 36
+  WHEN codigo = '8818' THEN 36
+  WHEN codigo = 'DB-795G' THEN 29
+  WHEN codigo = 'BS-8832P+33C' THEN 16
+  WHEN codigo = 'BS-8831P+33C' THEN 13
+  WHEN codigo = 'BS-8836' THEN 12
+  WHEN codigo = 'VG-800FC' THEN 8
+  WHEN codigo = 'BS-8830+33C' THEN 8
+  WHEN codigo = 'B3-8851' THEN 4
+  WHEN codigo = 'BS-8831W+33C' THEN 2
+  WHEN codigo = 'BS-8905' THEN 12
+  ELSE 0 END,
+  CASE
+  WHEN codigo = 'DB-688G' THEN 0
+  WHEN codigo = 'DB-2019XL' THEN 396
+  WHEN codigo = '681' THEN 415
+  WHEN codigo = 'DB-345GF' THEN 1306
+  WHEN codigo = 'DB-5558MD' THEN 158
+  WHEN codigo = 'DB-355F' THEN 1345
+  WHEN codigo = 'DB-2025GP' THEN 577
+  WHEN codigo = 'DB-395F' THEN 1378
+  WHEN codigo = 'DB-999VL' THEN 428
+  WHEN codigo = 'DB-BB10' THEN 440
+  WHEN codigo = 'DB-290MF' THEN 75
+  WHEN codigo = 'DB-GF001' THEN 362
+  WHEN codigo = '668-34' THEN 5
+  WHEN codigo = '668-35' THEN 20
+  WHEN codigo = '68123' THEN 31
+  WHEN codigo = 'DB-2021HX' THEN 324
+  WHEN codigo = 'DB-344VL' THEN 148
+  WHEN codigo = 'DB-366' THEN 84
+  WHEN codigo = 'DB-777WF' THEN 59
+  WHEN codigo = 'DB-FC01' THEN 165
+  WHEN codigo = 'CMQ-59A' THEN 55
+  WHEN codigo = 'CMQ-66A' THEN 65
+  WHEN codigo = '8808C' THEN 53
+  WHEN codigo = '8826' THEN 33
+  WHEN codigo = '8818' THEN 34
+  WHEN codigo = 'DB-795G' THEN 29
+  WHEN codigo = 'BS-8832P+33C' THEN 20
+  WHEN codigo = 'BS-8831P+33C' THEN 15
+  WHEN codigo = 'BS-8836' THEN 20
+  WHEN codigo = 'VG-800FC' THEN 4
+  WHEN codigo = 'BS-8830+33C' THEN 20
+  WHEN codigo = 'B3-8851' THEN 5
+  WHEN codigo = 'BS-8831W+33C' THEN 4
+  WHEN codigo = 'BS-8905' THEN 22
+  ELSE 0 END
+FROM public.productos
+WHERE activo = true;

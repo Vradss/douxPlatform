@@ -1,26 +1,17 @@
 @import "tailwindcss";
 
+/* Paleta de marca Doux Bebé */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --db-bg: #F7F8F8;
+  --db-surface: #EBEEFF;
+  --db-accent-light: #B8C2FF;
+  --db-accent: #4B5EEF;
+  --db-text: #1A1A2E;
+  --db-white: #FFFFFF;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--db-bg);
+  color: var(--db-text);
   font-family: Arial, Helvetica, sans-serif;
 }
