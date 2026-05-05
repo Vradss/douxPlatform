@@ -37,9 +37,9 @@ const DEMO_CLIENTES = [
 ]
 
 const DEMO_PRODUCTOS = [
-  { id: 'p1', codigo: 'DB-788W', nombre: 'Baby Twist Car', precio_venta_real: 97 },
-  { id: 'p2', codigo: 'DB-2025GP', nombre: 'Triciclo GP', precio_venta_real: 175 },
-  { id: 'p3', codigo: 'DB-999VL', nombre: 'Silla de Comer', precio_venta_real: 212.5 },
+  { id: 'p1', codigo: 'DB-788W', nombre: 'Baby Twist Car', precio_venta_real: 97, stock_real: 15 },
+  { id: 'p2', codigo: 'DB-2025GP', nombre: 'Triciclo GP', precio_venta_real: 175, stock_real: 8 },
+  { id: 'p3', codigo: 'DB-999VL', nombre: 'Silla de Comer', precio_venta_real: 212.5, stock_real: 4 },
 ]
 
 export default async function NotasPedidoPage() {
@@ -64,6 +64,13 @@ export default async function NotasPedidoPage() {
   hace4Meses.setMonth(hace4Meses.getMonth() - 4)
   const desde = hace4Meses.toISOString().split('T')[0]
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: perfil } = await supabase
+    .from('perfiles')
+    .select('nombre')
+    .eq('id', user?.id)
+    .single()
+
   const [
     { data: nps },
     { data: clientes },
@@ -76,8 +83,8 @@ export default async function NotasPedidoPage() {
         id, numero, numero_proforma, fecha, total, subtotal, igv,
         estado, tipo_comprobante, numero_comprobante,
         tipo_venta, comentario, cliente_id,
-        clientes(razon_social, nombre_whatsapp),
-        notas_pedido_items(id, codigo, descripcion, cantidad, precio_unitario, subtotal)
+        clientes!cliente_id(razon_social, nombre_whatsapp, num_doc, ruc),
+        notas_pedido_items!nota_pedido_id(id, codigo, descripcion, cantidad, precio_unitario, total)
       `)
       .gte('fecha', desde)
       .order('fecha', { ascending: false })
@@ -103,8 +110,9 @@ export default async function NotasPedidoPage() {
       npsIniciales={nps ?? []}
       clientes={clientes ?? []}
       productos={productos ?? []}
-      siguienteNumero={siguienteNumero ?? 'N001-250'}
+      siguienteNumero={siguienteNumero ?? 'N001-736'}
       modoDemo={false}
+      nombreUsuario={perfil?.nombre ?? ''}
     />
   )
 }

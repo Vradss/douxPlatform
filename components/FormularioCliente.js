@@ -101,15 +101,27 @@ export default function FormularioCliente({ accion, cliente }) {
         </div>
       </div>
 
-      {/* Dirección */}
+      {/* Dirección Fiscal */}
       <div>
-        <label className={labelCls}>Dirección</label>
+        <label className={labelCls}>Dirección Fiscal</label>
         <textarea
           name="direccion"
           defaultValue={cliente?.direccion}
           rows={2}
           className={inputCls}
           placeholder="Av. Lima 123, Miraflores"
+        />
+      </div>
+
+      {/* Dirección 1 */}
+      <div>
+        <label className={labelCls}>Dirección 1</label>
+        <textarea
+          name="direccion_1"
+          defaultValue={cliente?.direccion_1}
+          rows={2}
+          className={inputCls}
+          placeholder="Dirección alternativa o de entrega"
         />
       </div>
 
@@ -151,6 +163,29 @@ export default function FormularioCliente({ accion, cliente }) {
           rows={3}
           className={inputCls}
           placeholder="Descripción del comportamiento de pago del cliente..."
+        />
+      </div>
+
+      {/* Perfil de compra */}
+      <div>
+        <label className={labelCls}>Perfil de compra del cliente</label>
+        <input
+          name="perfil_compra"
+          defaultValue={cliente?.perfil_compra}
+          className={inputCls}
+          placeholder="Ej: COMPRADOR FRECUENTE"
+        />
+      </div>
+
+      {/* Comportamiento de compra */}
+      <div>
+        <label className={labelCls}>Comportamiento de compra</label>
+        <textarea
+          name="comportamiento_compra"
+          defaultValue={cliente?.comportamiento_compra}
+          rows={3}
+          className={inputCls}
+          placeholder="Descripción del comportamiento de compra..."
         />
       </div>
 

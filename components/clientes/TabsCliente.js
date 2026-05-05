@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useActionState } from 'react'
 import Link from 'next/link'
+import { actualizarClienteInline } from '@/app/actions/clientes'
 
 function formatearSoles(monto) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto ?? 0)
@@ -24,18 +25,138 @@ const METODO_LABEL = {
   deposito: 'Depósito', yape: 'Yape', plin: 'Plin', otro: 'Otro',
 }
 
-const PERFIL_CONFIG = {
-  'BUEN PAGADOR': 'bg-green-100 text-green-700',
-  'BUEN PAGADOR PUNTUAL': 'bg-green-100 text-green-700',
-  'PAGA PERO HAY QUE PRESIONAR': 'bg-yellow-100 text-yellow-700',
+const PERFILES_PAGO = [
+  'BUEN PAGADOR', 'BUEN PAGADOR PUNTUAL',
+  'PAGA PERO HAY QUE PRESIONAR', 'MAL PAGADOR', 'SIN HISTORIAL',
+]
+
+const inputCls = 'w-full border border-[#B8C2FF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4B5EEF] bg-white'
+const labelCls = 'block text-xs text-gray-400 uppercase tracking-wide mb-1'
+
+function TabInfo({ cliente }) {
+  const accion = actualizarClienteInline.bind(null, cliente.id)
+  const [state, formAction, pending] = useActionState(accion, null)
+
+  return (
+    <div className="bg-white rounded-xl border border-[#B8C2FF] p-6">
+      <form action={formAction} className="space-y-5">
+
+        {/* Tipo Doc + Número */}
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className={labelCls}>Tipo Doc</label>
+            <select name="tipo_doc" defaultValue={cliente.tipo_doc ?? 'RUC'} className={inputCls}>
+              <option value="RUC">RUC</option>
+              <option value="DNI">DNI</option>
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className={labelCls}>Número de documento</label>
+            <input name="num_doc" defaultValue={cliente.num_doc ?? ''} className={inputCls} placeholder="20600195779" />
+          </div>
+        </div>
+
+        {/* Razón Social + Nombre WhatsApp */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Razón Social <span className="text-red-400">*</span></label>
+            <input name="razon_social" required defaultValue={cliente.razon_social ?? ''} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Nombre WhatsApp</label>
+            <input name="nombre_whatsapp" defaultValue={cliente.nombre_whatsapp ?? ''} className={inputCls} placeholder="Como aparece en el celular" />
+          </div>
+        </div>
+
+        {/* Celular + Email */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Celular</label>
+            <input name="celular" defaultValue={cliente.celular ?? ''} className={inputCls} placeholder="999 999 999" />
+          </div>
+          <div>
+            <label className={labelCls}>Email Principal</label>
+            <input name="email" type="email" defaultValue={cliente.email ?? ''} className={inputCls} placeholder="cliente@empresa.com" />
+          </div>
+        </div>
+
+        {/* Dirección Fiscal */}
+        <div>
+          <label className={labelCls}>Dirección Fiscal</label>
+          <textarea name="direccion" defaultValue={cliente.direccion ?? ''} rows={2} className={inputCls} placeholder="Av. Lima 123, Miraflores" />
+        </div>
+
+        {/* Dirección 1 */}
+        <div>
+          <label className={labelCls}>Dirección 1</label>
+          <textarea name="direccion_1" defaultValue={cliente.direccion_1 ?? ''} rows={2} className={inputCls} placeholder="Dirección alternativa o de entrega" />
+        </div>
+
+        {/* Activo + Tipo de Venta */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Activo</label>
+            <select name="activo" defaultValue={cliente.activo !== false ? 'true' : 'false'} className={inputCls}>
+              <option value="true">SI</option>
+              <option value="false">NO</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Tipo de venta</label>
+            <select name="tipo_venta" defaultValue={cliente.tipo_venta ?? 'contado'} className={inputCls}>
+              <option value="contado">Contado</option>
+              <option value="credito">Crédito</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Perfil de pago + Comportamiento de pago */}
+        <div>
+          <label className={labelCls}>Perfil de pago del cliente</label>
+          <select name="perfil_pago" defaultValue={cliente.perfil_pago ?? ''} className={inputCls}>
+            <option value="">Sin perfil</option>
+            {PERFILES_PAGO.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Comportamiento de pago</label>
+          <textarea name="comportamiento_pago" defaultValue={cliente.comportamiento_pago ?? ''} rows={3} className={inputCls} placeholder="Notas sobre el comportamiento de pago..." />
+        </div>
+
+        {/* Perfil de compra + Comportamiento de compra */}
+        <div>
+          <label className={labelCls}>Perfil de compra del cliente</label>
+          <input name="perfil_compra" defaultValue={cliente.perfil_compra ?? ''} className={inputCls} placeholder="Ej: COMPRADOR FRECUENTE" />
+        </div>
+        <div>
+          <label className={labelCls}>Comportamiento de compra</label>
+          <textarea name="comportamiento_compra" defaultValue={cliente.comportamiento_compra ?? ''} rows={3} className={inputCls} placeholder="Notas sobre el comportamiento de compra..." />
+        </div>
+
+        {/* Feedback */}
+        {state?.error && (
+          <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg border border-red-200">{state.error}</p>
+        )}
+        {state?.success && (
+          <p className="text-green-700 text-sm bg-green-50 px-3 py-2 rounded-lg border border-green-200">Cambios guardados correctamente.</p>
+        )}
+
+        <div className="pt-1">
+          <button
+            type="submit"
+            disabled={pending}
+            className="bg-[#4B5EEF] hover:bg-[#3a4edf] disabled:bg-[#9aa5f7] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            {pending ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
 }
 
 export default function TabsCliente({ cliente, notas, cobros }) {
   const [tab, setTab] = useState('notas')
-
-  const perfilCls = cliente.perfil_pago
-    ? (PERFIL_CONFIG[cliente.perfil_pago] ?? 'bg-gray-100 text-gray-500')
-    : null
 
   return (
     <div>
@@ -126,7 +247,7 @@ export default function TabsCliente({ cliente, notas, cobros }) {
                 <tr key={cobro.id} className="hover:bg-[#F7F8F8]">
                   <td className="px-4 py-2.5 text-gray-500">{formatearFecha(cobro.fecha)}</td>
                   <td className="px-4 py-2.5 text-gray-600">{METODO_LABEL[cobro.metodo_pago] ?? cobro.metodo_pago}</td>
-                  <td className="px-4 py-2.5 text-gray-400">{cobro.referencia || '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-400">{cobro.numero_recibo || '—'}</td>
                   <td className="px-4 py-2.5 text-right font-semibold text-green-600">
                     {formatearSoles(cobro.monto_cobrado)}
                   </td>
@@ -138,71 +259,7 @@ export default function TabsCliente({ cliente, notas, cobros }) {
       )}
 
       {/* Tab: Información */}
-      {tab === 'info' && (
-        <div className="bg-white rounded-xl border border-[#B8C2FF] p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Razón Social</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.razon_social}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Nombre WhatsApp</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.nombre_whatsapp || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Documento</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.tipo_doc} {cliente.num_doc || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Celular</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.celular || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Correo</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.email || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Dirección</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.direccion || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Tipo de Venta</p>
-              <p className="font-medium text-[#1A1A2E] capitalize">{cliente.tipo_venta}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Cómo se cobra</p>
-              <p className="font-medium text-[#1A1A2E]">{cliente.como_se_cobra || 'Lima'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Deuda inicial</p>
-              <p className="font-medium text-[#1A1A2E]">{formatearSoles(cliente.deuda_inicial)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Perfil de pago</p>
-              {cliente.perfil_pago
-                ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${perfilCls}`}>{cliente.perfil_pago}</span>
-                : <p className="text-gray-400">—</p>
-              }
-            </div>
-          </div>
-          {cliente.comportamiento_pago && (
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Comportamiento de pago</p>
-              <p className="text-sm text-gray-600 bg-[#F7F8F8] rounded-lg p-3 border border-[#B8C2FF]">
-                {cliente.comportamiento_pago}
-              </p>
-            </div>
-          )}
-          <div className="pt-2">
-            <Link
-              href={`/clientes/${cliente.id}/editar`}
-              className="bg-[#4B5EEF] hover:bg-[#3a4edf] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block"
-            >
-              Editar información
-            </Link>
-          </div>
-        </div>
-      )}
+      {tab === 'info' && <TabInfo cliente={cliente} />}
     </div>
   )
 }

@@ -1,8 +1,9 @@
 // Modal para crear nueva Nota de Pedido — Client Component
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { crearNotaPedido } from '@/app/actions/notas-pedido'
+import { createClient } from '@/lib/supabase/client'
 
 const IGV = 0.18
 
@@ -11,17 +12,24 @@ function formatearSoles(monto) {
 }
 
 function lineaVacia() {
-  return { _id: Date.now() + Math.random(), productoId: null, codigo: '', descripcion: '', cantidad: 1, precioUnitario: 0, subtotal: 0 }
+  return {
+    _id: Date.now() + Math.random(),
+    productoId: null,
+    codigo: '',
+    descripcion: '',
+    cantidad: 1,
+    precioUnitario: 0,
+    subtotal: 0,
+    stockDisponible: null,
+  }
 }
 
 // ─── Combobox de cliente ──────────────────────────────────────────────────────
 function ComboboxCliente({ clientes, onSelect }) {
   const [query, setQuery] = useState('')
   const [abierto, setAbierto] = useState(false)
-  const [seleccionado, setSeleccionado] = useState(null)
   const ref = useRef(null)
 
-  // Cerrar al click fuera
   useEffect(() => {
     function handler(e) { if (ref.current && !ref.current.contains(e.target)) setAbierto(false) }
     document.addEventListener('mousedown', handler)
@@ -39,7 +47,6 @@ function ComboboxCliente({ clientes, onSelect }) {
     : []
 
   function seleccionar(cliente) {
-    setSeleccionado(cliente)
     setQuery(cliente.nombre_whatsapp || cliente.razon_social)
     setAbierto(false)
     onSelect(cliente)
@@ -49,7 +56,11 @@ function ComboboxCliente({ clientes, onSelect }) {
     <div ref={ref} className="relative">
       <input
         value={query}
-        onChange={(e) => { setQuery(e.target.value); setAbierto(true); if (!e.target.value) { setSeleccionado(null); onSelect(null) } }}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setAbierto(true)
+          if (!e.target.value) onSelect(null)
+        }}
         onFocus={() => { if (query.length > 0) setAbierto(true) }}
         placeholder="Buscar por nombre o razón social..."
         className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
@@ -82,11 +93,17 @@ function ComboboxCliente({ clientes, onSelect }) {
   )
 }
 
-// ─── Combobox de producto por línea ──────────────────────────────────────────
-function ComboboxProducto({ productos, valor, onChange }) {
+// ─── Combobox de producto con búsqueda en tiempo real ─────────────────────────
+// Modo real: ILIKE en Supabase con JOIN a tabla stock
+// Modo demo: filtrado local sobre productosDemo
+function ComboboxProducto({ modoDemo, productosDemo, valor, onChange }) {
   const [query, setQuery] = useState(valor)
   const [abierto, setAbierto] = useState(false)
+  const [resultados, setResultados] = useState([])
+  const [cargando, setCargando] = useState(false)
+  const [sinResultados, setSinResultados] = useState(false)
   const ref = useRef(null)
+  const timerRef = useRef(null)
 
   useEffect(() => {
     function handler(e) { if (ref.current && !ref.current.contains(e.target)) setAbierto(false) }
@@ -94,51 +111,140 @@ function ComboboxProducto({ productos, valor, onChange }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const filtrados = query.length > 0
-    ? productos.filter((p) => {
-        const q = query.toLowerCase()
-        return (
-          (p.codigo ?? '').toLowerCase().includes(q) ||
-          p.nombre.toLowerCase().includes(q)
+  async function buscar(texto) {
+    const q = texto.trim()
+    if (!q) {
+      setResultados([])
+      setSinResultados(false)
+      return
+    }
+
+    if (modoDemo) {
+      // Filtrar localmente sobre el array de demo
+      const ql = q.toLowerCase()
+      const encontrados = (productosDemo ?? [])
+        .filter(p =>
+          (typeof p.stock_real !== 'number' || p.stock_real > 0) &&
+          ((p.codigo ?? '').toLowerCase().includes(ql) || p.nombre.toLowerCase().includes(ql))
         )
-      }).slice(0, 6)
-    : []
+        .slice(0, 6)
+      setResultados(encontrados)
+      setSinResultados(encontrados.length === 0)
+      return
+    }
+
+    // Búsqueda real en Supabase — ILIKE en codigo y nombre, luego JOIN manual a stock
+    setCargando(true)
+    const supabase = createClient()
+
+    console.log('[BuscadorProducto] Buscando:', q)
+
+    const { data, error } = await supabase
+      .from('productos')
+      .select('id, codigo, nombre, precio_venta_real, activo')
+      .or(`codigo.ilike.%${q}%,nombre.ilike.%${q}%`)
+      .eq('activo', true)
+      .limit(10)
+
+    console.log('[BuscadorProducto] Resultado productos:', data, '| Error:', error)
+
+    if (!error && data?.length) {
+      const { data: stockData } = await supabase
+        .from('stock')
+        .select('codigo, stock_real')
+        .in('codigo', data.map(p => p.codigo))
+
+      console.log('[BuscadorProducto] Resultado stock:', stockData)
+
+      const stockMap = Object.fromEntries((stockData ?? []).map(s => [s.codigo, s.stock_real]))
+
+      const procesados = data
+        .map(p => ({
+          id: p.id,
+          codigo: p.codigo,
+          nombre: p.nombre,
+          precio_venta_real: p.precio_venta_real,
+          stock_real: stockMap[p.codigo] ?? null,
+        }))
+        .filter(p => typeof p.stock_real !== 'number' || p.stock_real > 0)
+
+      setResultados(procesados)
+      setSinResultados(procesados.length === 0)
+    } else if (!error) {
+      setResultados([])
+      setSinResultados(true)
+    }
+    setCargando(false)
+  }
+
+  function handleChange(e) {
+    const v = e.target.value
+    setQuery(v)
+    setAbierto(true)
+    setSinResultados(false)
+    // Debounce 200 ms para no saturar la base de datos
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => buscar(v), 200)
+  }
 
   function seleccionar(prod) {
     setQuery(prod.codigo ? `${prod.codigo} – ${prod.nombre}` : prod.nombre)
     setAbierto(false)
-    onChange({ productoId: prod.id, codigo: prod.codigo ?? '', descripcion: prod.nombre, precioUnitario: prod.precio_venta_real })
+    setResultados([])
+    setSinResultados(false)
+    onChange({
+      productoId: prod.id,
+      codigo: prod.codigo ?? '',
+      descripcion: prod.nombre,
+      precioUnitario: prod.precio_venta_real ?? 0,
+      stockDisponible: prod.stock_real ?? null,
+    })
   }
+
+  const mostrarDropdown = abierto && (cargando || resultados.length > 0 || sinResultados)
 
   return (
     <div ref={ref} className="relative">
       <input
         value={query}
-        onChange={(e) => { setQuery(e.target.value); setAbierto(true) }}
-        onFocus={() => { if (query.length > 0) setAbierto(true) }}
+        onChange={handleChange}
+        onFocus={() => { if (resultados.length > 0 || sinResultados) setAbierto(true) }}
         placeholder="Código o descripción..."
         className="w-full px-2 py-1.5 text-xs rounded border outline-none"
         style={{ borderColor: '#B8C2FF', color: '#1A1A2E' }}
         autoComplete="off"
       />
-      {abierto && filtrados.length > 0 && (
+      {mostrarDropdown && (
         <div
-          className="absolute z-50 w-64 mt-1 rounded-lg shadow-lg overflow-hidden"
-          style={{ backgroundColor: '#FFFFFF', border: '1px solid #B8C2FF' }}
+          className="absolute w-80 mt-1 rounded-lg shadow-lg overflow-hidden"
+          style={{ backgroundColor: '#FFFFFF', border: '1px solid #B8C2FF', zIndex: 9999 }}
         >
-          {filtrados.map((p) => (
+          {cargando && (
+            <div className="px-3 py-2.5 text-xs" style={{ color: '#B8C2FF' }}>
+              Buscando...
+            </div>
+          )}
+          {!cargando && sinResultados && (
+            <div className="px-3 py-2.5 text-xs" style={{ color: '#B8C2FF' }}>
+              No se encontró ningún producto
+            </div>
+          )}
+          {!cargando && resultados.map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => seleccionar(p)}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors"
+              className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors border-b last:border-0"
+              style={{ borderColor: '#EBEEFF' }}
             >
-              <span className="font-mono font-medium" style={{ color: '#4B5EEF' }}>{p.codigo}</span>
-              {p.codigo && ' – '}
-              <span style={{ color: '#1A1A2E' }}>{p.nombre}</span>
-              <span className="float-right" style={{ color: '#B8C2FF' }}>
-                {formatearSoles(p.precio_venta_real)}
+              <span className="font-mono font-semibold" style={{ color: '#4B5EEF' }}>
+                [{p.codigo}]
               </span>
+              <span style={{ color: '#1A1A2E' }}> — {p.nombre}</span>
+              {p.stock_real !== null && (
+                <span style={{ color: '#166534' }}> — Stock: {p.stock_real}</span>
+              )}
+              <span style={{ color: '#B8C2FF' }}> — S/ {p.precio_venta_real?.toFixed(2) ?? '—'}</span>
             </button>
           ))}
         </div>
@@ -159,7 +265,6 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Calcular subtotales y total
   const lineasCalculadas = lineas.map((l) => ({
     ...l,
     subtotal: +(l.cantidad * l.precioUnitario).toFixed(2),
@@ -168,17 +273,18 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
   const subtotalSinIgv = +(totalConIgv / (1 + IGV)).toFixed(2)
   const igv = +(totalConIgv - subtotalSinIgv).toFixed(2)
 
-  // Actualizar una línea
+  const hayExcesoStock = lineasCalculadas.some(
+    (l) => l.stockDisponible !== null && l.cantidad > l.stockDisponible
+  )
+
   function actualizarLinea(id, cambios) {
     setLineas((prev) => prev.map((l) => l._id === id ? { ...l, ...cambios } : l))
   }
 
-  // Agregar línea vacía
   function agregarLinea() {
     setLineas((prev) => [...prev, lineaVacia()])
   }
 
-  // Eliminar línea
   function eliminarLinea(id) {
     if (lineas.length === 1) return
     setLineas((prev) => prev.filter((l) => l._id !== id))
@@ -190,12 +296,16 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
 
     if (!clienteSeleccionado) { setError('Selecciona un cliente.'); return }
 
-    const lineasValidas = lineasCalculadas.filter((l) => l.descripcion.trim() && l.cantidad > 0 && l.precioUnitario > 0)
-    if (!lineasValidas.length) { setError('Agrega al menos un producto con precio y cantidad.'); return }
+    const lineasValidas = lineasCalculadas.filter(
+      (l) => l.descripcion.trim() && l.cantidad > 0 && l.precioUnitario > 0
+    )
+    if (!lineasValidas.length) {
+      setError('Agrega al menos un producto con precio y cantidad.')
+      return
+    }
 
     if (modoDemo) {
-      // En modo demo: simular creación con datos locales
-      const npDemo = {
+      onCreada({
         id: Date.now().toString(),
         numero: numeroNp,
         numero_proforma: numeroProforma || null,
@@ -211,8 +321,7 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
         cliente_id: clienteSeleccionado.id,
         clientes: { razon_social: clienteSeleccionado.razon_social, nombre_whatsapp: clienteSeleccionado.nombre_whatsapp },
         notas_pedido_items: lineasValidas,
-      }
-      onCreada(npDemo)
+      })
       return
     }
 
@@ -236,23 +345,21 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
     onCreada(resultado.np)
   }
 
-  // Cerrar con Escape
   useEffect(() => {
     function handler(e) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
+  const gridProductos = '3fr 0.7fr 0.8fr 1fr 1fr auto'
+
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40"
         style={{ backgroundColor: 'rgba(26,26,46,0.5)' }}
         onClick={onClose}
       />
-
-      {/* Modal */}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         onClick={(e) => e.stopPropagation()}
@@ -262,7 +369,7 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
           style={{ backgroundColor: '#FFFFFF' }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header del modal */}
+          {/* Header */}
           <div
             className="flex items-center justify-between px-6 py-4 sticky top-0 z-10"
             style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #EBEEFF' }}
@@ -281,7 +388,7 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
           </div>
 
           <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-            {/* ── Fila 1: Cliente ── */}
+            {/* ── Cliente ── */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#B8C2FF' }}>
                 Cliente *
@@ -290,12 +397,12 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
               {clienteSeleccionado?.saldo_pendiente > 0 && (
                 <p className="mt-1.5 text-xs font-medium" style={{ color: '#DC2626' }}>
                   ⚠ Saldo pendiente:{' '}
-                  {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(clienteSeleccionado.saldo_pendiente)}
+                  {formatearSoles(clienteSeleccionado.saldo_pendiente)}
                 </p>
               )}
             </div>
 
-            {/* ── Fila 2: Número NP, Proforma, Fecha, Tipo ── */}
+            {/* ── Número NP, Proforma, Fecha, Tipo ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#B8C2FF' }}>
@@ -316,7 +423,7 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
                 <input
                   value={numeroProforma}
                   onChange={(e) => setNumeroProforma(e.target.value)}
-                  placeholder="13442"
+                  placeholder="Opcional"
                   className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
                   style={{ borderColor: '#B8C2FF', color: '#1A1A2E' }}
                 />
@@ -355,14 +462,15 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
               <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#B8C2FF' }}>
                 Productos *
               </label>
-              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #B8C2FF' }}>
+              <div className="rounded-lg" style={{ border: '1px solid #B8C2FF' }}>
                 {/* Encabezados */}
                 <div
                   className="grid gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide"
-                  style={{ backgroundColor: '#EBEEFF', color: '#1A1A2E', gridTemplateColumns: '3fr 1fr 1fr 1fr auto' }}
+                  style={{ backgroundColor: '#EBEEFF', color: '#1A1A2E', gridTemplateColumns: gridProductos }}
                 >
                   <span>Producto</span>
-                  <span className="text-center">Cantidad</span>
+                  <span className="text-center">Stock</span>
+                  <span className="text-center">Cant.</span>
                   <span className="text-right">P. Unit. S/</span>
                   <span className="text-right">Total S/</span>
                   <span></span>
@@ -372,27 +480,49 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
                 <div className="divide-y" style={{ borderColor: '#EBEEFF' }}>
                   {lineas.map((linea) => {
                     const subtotal = +(linea.cantidad * linea.precioUnitario).toFixed(2)
+                    const excedeStock =
+                      linea.stockDisponible !== null && linea.cantidad > linea.stockDisponible
+
                     return (
                       <div
                         key={linea._id}
                         className="grid gap-2 px-3 py-2 items-center"
-                        style={{ gridTemplateColumns: '3fr 1fr 1fr 1fr auto' }}
+                        style={{ gridTemplateColumns: gridProductos }}
                       >
-                        {/* Búsqueda de producto */}
+                        {/* Buscador de producto */}
                         <ComboboxProducto
-                          productos={productos}
+                          modoDemo={modoDemo}
+                          productosDemo={productos}
                           valor={linea.codigo ? `${linea.codigo} – ${linea.descripcion}` : linea.descripcion}
                           onChange={(datos) => actualizarLinea(linea._id, datos)}
                         />
+
+                        {/* Stock disponible */}
+                        <div className="text-xs text-center font-semibold">
+                          {linea.stockDisponible === null ? (
+                            <span style={{ color: '#B8C2FF' }}>—</span>
+                          ) : (
+                            <span style={{ color: excedeStock ? '#DC2626' : '#166534' }}>
+                              {linea.stockDisponible}
+                            </span>
+                          )}
+                        </div>
 
                         {/* Cantidad */}
                         <input
                           type="number"
                           min="1"
                           value={linea.cantidad}
-                          onChange={(e) => actualizarLinea(linea._id, { cantidad: parseInt(e.target.value) || 1 })}
-                          className="w-full px-2 py-1.5 text-xs text-center rounded border outline-none"
-                          style={{ borderColor: '#B8C2FF', color: '#1A1A2E' }}
+                          onChange={(e) =>
+                            actualizarLinea(linea._id, { cantidad: parseInt(e.target.value) || 1 })
+                          }
+                          className="w-full px-2 py-1.5 text-xs text-center rounded border outline-none font-semibold"
+                          style={{
+                            borderColor: excedeStock ? '#DC2626' : '#B8C2FF',
+                            color: excedeStock ? '#DC2626' : '#1A1A2E',
+                            backgroundColor: excedeStock ? '#FFF5F5' : '#FFFFFF',
+                          }}
+                          title={excedeStock ? `Stock disponible: ${linea.stockDisponible}` : undefined}
                         />
 
                         {/* Precio unitario */}
@@ -401,7 +531,9 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
                           min="0"
                           step="0.01"
                           value={linea.precioUnitario}
-                          onChange={(e) => actualizarLinea(linea._id, { precioUnitario: parseFloat(e.target.value) || 0 })}
+                          onChange={(e) =>
+                            actualizarLinea(linea._id, { precioUnitario: parseFloat(e.target.value) || 0 })
+                          }
                           className="w-full px-2 py-1.5 text-xs text-right rounded border outline-none"
                           style={{ borderColor: '#B8C2FF', color: '#1A1A2E' }}
                         />
@@ -441,6 +573,20 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
                 </div>
               </div>
             </div>
+
+            {/* Advertencia de stock insuficiente */}
+            {hayExcesoStock && (
+              <div
+                className="flex items-start gap-2 px-4 py-3 rounded-xl text-sm"
+                style={{ backgroundColor: '#FEF9C3', color: '#854D0E' }}
+              >
+                <span className="flex-shrink-0">⚠</span>
+                <span>
+                  Uno o más productos superan el stock disponible. El pedido se guardará igual
+                  y se registrará una advertencia en el comentario.
+                </span>
+              </div>
+            )}
 
             {/* ── Totales ── */}
             <div className="flex justify-end">
@@ -482,7 +628,10 @@ export default function ModalNuevaNP({ clientes, productos, siguienteNumero, mod
 
             {/* Error */}
             {error && (
-              <p className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
+              <p
+                className="text-sm px-3 py-2 rounded-lg"
+                style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+              >
                 {error}
               </p>
             )}

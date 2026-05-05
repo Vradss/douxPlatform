@@ -13,9 +13,12 @@ function extraerDatos(formData) {
     celular: formData.get('celular') || null,
     email: formData.get('email') || null,
     direccion: formData.get('direccion') || null,
+    direccion_1: formData.get('direccion_1') || null,
     tipo_venta: formData.get('tipo_venta') || 'contado',
     perfil_pago: formData.get('perfil_pago') || null,
     comportamiento_pago: formData.get('comportamiento_pago') || null,
+    perfil_compra: formData.get('perfil_compra') || null,
+    comportamiento_compra: formData.get('comportamiento_compra') || null,
     como_se_cobra: formData.get('como_se_cobra') || null,
     deuda_inicial: parseFloat(formData.get('deuda_inicial') || '0') || 0,
   }
@@ -56,6 +59,41 @@ export async function actualizarCliente(id, formData) {
   revalidatePath('/clientes')
   revalidatePath(`/clientes/${id}`)
   redirect(`/clientes/${id}`)
+}
+
+// Actualizar cliente sin redirigir (para edición inline en ficha)
+export async function actualizarClienteInline(id, _prevState, formData) {
+  const supabase = await createClient()
+  const datos = extraerDatos(formData)
+  datos.activo = formData.get('activo') === 'true'
+
+  const { error } = await supabase
+    .from('clientes')
+    .update(datos)
+    .eq('id', id)
+
+  if (error) {
+    return { error: 'Error al actualizar el cliente.' }
+  }
+
+  revalidatePath('/clientes')
+  revalidatePath(`/clientes/${id}`)
+  return { success: true }
+}
+
+// Activar / desactivar desde la lista principal
+export async function toggleActivoCliente(id, activo) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('clientes')
+    .update({ activo })
+    .eq('id', id)
+
+  if (error) return { error: 'Error al actualizar.' }
+
+  revalidatePath('/clientes')
+  return { success: true }
 }
 
 // Desactivar cliente (soft delete)

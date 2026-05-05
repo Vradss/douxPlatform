@@ -20,8 +20,8 @@ export async function registrarCobro(formData) {
     fecha: formData.get('fecha'),
     monto_cobrado: monto,
     metodo_pago: formData.get('metodo_pago'),
-    referencia: formData.get('referencia') || null,
-    observaciones: formData.get('observaciones') || null,
+    numero_recibo: formData.get('referencia') || null,
+    notas: formData.get('observaciones') || null,
   }
 
   const { error } = await supabase.from('cobranzas').insert(datos)

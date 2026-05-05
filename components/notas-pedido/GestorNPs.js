@@ -40,7 +40,7 @@ function BadgeEstado({ estado }) {
   const config = {
     pendiente: { label: 'Pendiente', bg: '#FEF9C3', color: '#854D0E', border: '#FDE047' },
     entregado: { label: 'Entregado', bg: '#DCFCE7', color: '#166534', border: '#86EFAC' },
-    anulado:   { label: 'Anulado',   bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
+    anulada:   { label: 'Anulado',   bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
   }[estado] ?? { label: estado, bg: '#F3F4F6', color: '#374151', border: '#D1D5DB' }
 
   return (
@@ -91,7 +91,7 @@ function ResumenProductos({ items }) {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
-export default function GestorNPs({ npsIniciales, clientes, productos, siguienteNumero, modoDemo }) {
+export default function GestorNPs({ npsIniciales, clientes, productos, siguienteNumero, modoDemo, nombreUsuario }) {
   const router = useRouter()
 
   // Estado local de NPs (se actualiza al crear una nueva)
@@ -102,28 +102,46 @@ export default function GestorNPs({ npsIniciales, clientes, productos, siguiente
   const [filtroMes, setFiltroMes] = useState(mesActual)
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [busquedaCliente, setBusquedaCliente] = useState('')
+  const [filtroTipoVenta, setFiltroTipoVenta] = useState('todos')
+  const [filtroComprobante, setFiltroComprobante] = useState('todos')
 
   // Modal y drawer
   const [modalAbierto, setModalAbierto] = useState(false)
   const [npSeleccionada, setNpSeleccionada] = useState(null)
 
+  const hayFiltrosActivos = filtroEstado !== 'todos' || busquedaCliente ||
+    filtroTipoVenta !== 'todos' || filtroComprobante !== 'todos' || filtroMes !== mesActual
+
+  function limpiarFiltros() {
+    setFiltroMes(mesActual)
+    setFiltroEstado('todos')
+    setBusquedaCliente('')
+    setFiltroTipoVenta('todos')
+    setFiltroComprobante('todos')
+  }
+
   // ── Filtrado cliente-side ─────────────────────────────────────────────────
   const npsFiltradas = useMemo(() => {
     return nps.filter((np) => {
-      // Filtro por mes
+      if (!np?.fecha) return false
       if (filtroMes && !np.fecha.startsWith(filtroMes)) return false
-      // Filtro por estado
       if (filtroEstado !== 'todos' && np.estado !== filtroEstado) return false
-      // Búsqueda por cliente
+      if (filtroTipoVenta !== 'todos' && np.tipo_venta !== filtroTipoVenta) return false
+      if (filtroComprobante === 'ninguno') {
+        if (np.tipo_comprobante && np.tipo_comprobante !== 'ninguno') return false
+      } else if (filtroComprobante !== 'todos') {
+        if (np.tipo_comprobante !== filtroComprobante) return false
+      }
       if (busquedaCliente) {
         const q = busquedaCliente.toLowerCase()
         const ws = (np.clientes?.nombre_whatsapp ?? '').toLowerCase()
         const rs = (np.clientes?.razon_social ?? '').toLowerCase()
-        if (!ws.includes(q) && !rs.includes(q)) return false
+        const num = (np.numero ?? '').toLowerCase()
+        if (!ws.includes(q) && !rs.includes(q) && !num.includes(q)) return false
       }
       return true
     })
-  }, [nps, filtroMes, filtroEstado, busquedaCliente])
+  }, [nps, filtroMes, filtroEstado, busquedaCliente, filtroTipoVenta, filtroComprobante])
 
   // ── Totales del filtro actual ─────────────────────────────────────────────
   const totalFiltrado = npsFiltradas.reduce((acc, np) => acc + (np.total ?? 0), 0)
@@ -151,7 +169,7 @@ export default function GestorNPs({ npsIniciales, clientes, productos, siguiente
     { valor: 'todos', label: 'Todos' },
     { valor: 'pendiente', label: 'Pendiente' },
     { valor: 'entregado', label: 'Entregado' },
-    { valor: 'anulado', label: 'Anulado' },
+    { valor: 'anulada', label: 'Anulado' },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -176,29 +194,74 @@ export default function GestorNPs({ npsIniciales, clientes, productos, siguiente
       </div>
 
       {/* ── Filtros ── */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        {/* Selector de mes */}
-        <select
-          value={filtroMes}
-          onChange={(e) => setFiltroMes(e.target.value)}
-          className="text-sm px-3 py-1.5 rounded-lg border outline-none"
-          style={{ borderColor: '#B8C2FF', backgroundColor: '#FFFFFF', color: '#1A1A2E' }}
-        >
-          <option value="">Todos los meses</option>
-          {MESES.map((m) => (
-            <option key={m.valor} value={m.valor}>{m.label}</option>
-          ))}
-        </select>
+      <div className="bg-white rounded-xl border mb-4 p-4" style={{ borderColor: '#B8C2FF' }}>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Buscador */}
+          <div className="relative flex-1 min-w-[200px]">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+              className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: '#B8C2FF' }}>
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
+            <input
+              type="text"
+              value={busquedaCliente}
+              onChange={(e) => setBusquedaCliente(e.target.value)}
+              placeholder="Buscar cliente o N° NP…"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none"
+              style={{ borderColor: '#B8C2FF', backgroundColor: '#FFFFFF', color: '#1A1A2E' }}
+            />
+          </div>
 
-        {/* Buscador de cliente */}
-        <input
-          type="text"
-          value={busquedaCliente}
-          onChange={(e) => setBusquedaCliente(e.target.value)}
-          placeholder="Buscar cliente..."
-          className="text-sm px-3 py-1.5 rounded-lg border outline-none w-48"
-          style={{ borderColor: '#B8C2FF', backgroundColor: '#FFFFFF', color: '#1A1A2E' }}
-        />
+          {/* Mes */}
+          <select
+            value={filtroMes}
+            onChange={(e) => setFiltroMes(e.target.value)}
+            className="text-sm px-3 py-2 rounded-lg border outline-none"
+            style={{ borderColor: '#B8C2FF', backgroundColor: '#FFFFFF', color: '#1A1A2E' }}
+          >
+            <option value="">Todos los meses</option>
+            {MESES.map((m) => (
+              <option key={m.valor} value={m.valor}>{m.label}</option>
+            ))}
+          </select>
+
+          {/* Tipo Venta */}
+          <select
+            value={filtroTipoVenta}
+            onChange={(e) => setFiltroTipoVenta(e.target.value)}
+            className="text-sm px-3 py-2 rounded-lg border outline-none"
+            style={{ borderColor: '#B8C2FF', backgroundColor: '#FFFFFF', color: '#1A1A2E' }}
+          >
+            <option value="todos">Tipo venta: Todos</option>
+            <option value="contado">Contado</option>
+            <option value="credito">Crédito</option>
+          </select>
+
+          {/* Comprobante */}
+          <select
+            value={filtroComprobante}
+            onChange={(e) => setFiltroComprobante(e.target.value)}
+            className="text-sm px-3 py-2 rounded-lg border outline-none"
+            style={{ borderColor: '#B8C2FF', backgroundColor: '#FFFFFF', color: '#1A1A2E' }}
+          >
+            <option value="todos">Comprobante: Todos</option>
+            <option value="factura">Factura</option>
+            <option value="boleta">Boleta</option>
+            <option value="ninguno">Sin comprobante</option>
+          </select>
+
+          {/* Limpiar */}
+          {hayFiltrosActivos && (
+            <button
+              onClick={limpiarFiltros}
+              className="text-sm font-medium whitespace-nowrap"
+              style={{ color: '#4B5EEF' }}
+            >
+              ✕ Limpiar filtros
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs de estado */}
@@ -308,6 +371,7 @@ export default function GestorNPs({ npsIniciales, clientes, productos, siguiente
           modoDemo={modoDemo}
           onClose={() => setNpSeleccionada(null)}
           onEstadoCambiado={onEstadoCambiado}
+          nombreUsuario={nombreUsuario}
         />
       )}
     </div>

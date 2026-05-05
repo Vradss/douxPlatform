@@ -31,7 +31,7 @@ export default async function DetalleNPPage({ params }) {
     .select(`
       *,
       clientes(id, razon_social, ruc),
-      notas_pedido_items(id, descripcion, cantidad, precio_unitario, subtotal)
+      notas_pedido_items(id, descripcion, cantidad, precio_unitario, total)
     `)
     .eq('id', id)
     .single()
@@ -128,7 +128,7 @@ export default async function DetalleNPPage({ params }) {
                 <td className="px-4 py-2.5 text-gray-700">{linea.descripcion}</td>
                 <td className="px-4 py-2.5 text-center text-gray-600">{linea.cantidad}</td>
                 <td className="px-4 py-2.5 text-right text-gray-600">{formatearSoles(linea.precio_unitario)}</td>
-                <td className="px-4 py-2.5 text-right font-medium text-gray-700">{formatearSoles(linea.subtotal)}</td>
+                <td className="px-4 py-2.5 text-right font-medium text-gray-700">{formatearSoles(linea.total)}</td>
               </tr>
             ))}
           </tbody>

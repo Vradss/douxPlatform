@@ -29,7 +29,7 @@ export default async function DetalleClientePage({ params }) {
 
     supabase
       .from('cobranzas')
-      .select('id, fecha, monto_cobrado, metodo_pago, referencia')
+      .select('id, fecha, monto_cobrado, metodo_pago, numero_recibo')
       .eq('cliente_id', id)
       .order('fecha', { ascending: false })
       .limit(50),
