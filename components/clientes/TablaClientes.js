@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { Eye, Pencil } from 'lucide-react'
 import ToggleActivoCliente from './ToggleActivoCliente'
 
 const PERFIL_CONFIG = {
@@ -173,10 +174,17 @@ export default function TablaClientes({ clientes }) {
                 <td className="px-4 py-3 text-center">
                   <ToggleActivoCliente id={c.id} activo={c.activo !== false} />
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/clientes/${c.id}`} className="text-[#4B5EEF] hover:text-[#3a4edf] font-medium text-xs">
-                    Ver →
-                  </Link>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <Link href={`/clientes/${c.id}`} title="Ver ficha"
+                      className="p-1.5 rounded-lg text-[#4B5EEF] hover:bg-[#EBEEFF] transition-colors">
+                      <Eye size={18} />
+                    </Link>
+                    <Link href={`/clientes/${c.id}/editar`} title="Editar"
+                      className="p-1.5 rounded-lg text-[#4B5EEF] hover:bg-[#EBEEFF] transition-colors">
+                      <Pencil size={18} />
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

@@ -83,16 +83,16 @@ export default async function NotasPedidoPage() {
         id, numero, numero_proforma, fecha, total, subtotal, igv,
         estado, tipo_comprobante, numero_comprobante,
         tipo_venta, comentario, cliente_id,
-        clientes!cliente_id(razon_social, nombre_whatsapp, num_doc, ruc),
         notas_pedido_items!nota_pedido_id(id, codigo, descripcion, cantidad, precio_unitario, total)
       `)
       .gte('fecha', desde)
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: false }),
 
+    // Incluir campos de documento y dirección para usarlos en el PDF
     supabase
       .from('v_saldo_clientes')
-      .select('id, razon_social, nombre_whatsapp, saldo_pendiente')
+      .select('id, razon_social, nombre_whatsapp, tipo_doc, num_doc, ruc, direccion, saldo_pendiente')
       .eq('activo', true)
       .order('razon_social'),
 
@@ -105,9 +105,16 @@ export default async function NotasPedidoPage() {
     supabase.rpc('generar_numero_np'),
   ])
 
+  // Adjuntar datos del cliente a cada NP en JS (join PostgREST no funciona confiablemente)
+  const clienteMap = Object.fromEntries((clientes ?? []).map((c) => [c.id, c]))
+  const npsConClientes = (nps ?? []).map((np) => ({
+    ...np,
+    clientes: clienteMap[np.cliente_id] ?? null,
+  }))
+
   return (
     <GestorNPs
-      npsIniciales={nps ?? []}
+      npsIniciales={npsConClientes}
       clientes={clientes ?? []}
       productos={productos ?? []}
       siguienteNumero={siguienteNumero ?? 'N001-736'}

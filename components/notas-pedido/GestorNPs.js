@@ -4,8 +4,10 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { Eye, Pencil } from 'lucide-react'
 import ModalNuevaNP from './ModalNuevaNP'
 import DrawerDetalleNP from './DrawerDetalleNP'
+import { cambiarEstadoNP } from '@/app/actions/notas-pedido'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -153,6 +155,16 @@ export default function GestorNPs({ npsIniciales, clientes, productos, siguiente
     setNps((prev) => [nuevaNP, ...prev])
     setModalAbierto(false)
     if (!modoDemo) router.refresh()
+  }
+
+  async function handleEntregar(e, np) {
+    e.stopPropagation()
+    if (modoDemo) {
+      onEstadoCambiado(np.id, 'entregado')
+      return
+    }
+    const result = await cambiarEstadoNP(np.id, 'entregado')
+    if (!result?.error) onEstadoCambiado(np.id, 'entregado')
   }
 
   // Al cambiar estado desde el drawer: actualizar localmente
@@ -341,10 +353,31 @@ export default function GestorNPs({ npsIniciales, clientes, productos, siguiente
                 <td className="px-4 py-3 text-center">
                   <BadgeComprobante tipo={np.tipo_comprobante} numero={np.numero_comprobante} />
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <span style={{ color: '#4B5EEF' }} className="text-xs font-medium">
-                    Ver →
-                  </span>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => setNpSeleccionada(np)}
+                      title="Ver detalle"
+                      className="p-1.5 rounded-lg text-[#4B5EEF] hover:bg-[#EBEEFF] transition-colors"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      title="Editar NP"
+                      className="p-1.5 rounded-lg text-[#4B5EEF] hover:bg-[#EBEEFF] transition-colors"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    {np.estado === 'pendiente' && (
+                      <button
+                        onClick={(e) => handleEntregar(e, np)}
+                        className="ml-1 px-3.5 py-1 text-[13px] font-medium text-white transition-colors"
+                        style={{ backgroundColor: '#4B5EEF', borderRadius: '20px' }}
+                      >
+                        Entregar
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

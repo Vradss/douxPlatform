@@ -73,11 +73,13 @@ export default async function DashboardPage() {
   const totalPorCobrar = saldoTotal?.reduce((acc, c) => acc + c.saldo_pendiente, 0) ?? 0
 
   const ESTADO_CONFIG = {
-    pendiente: { label: 'Pendiente', clase: 'bg-yellow-100 text-yellow-700' },
-    cobrada: { label: 'Cobrada', clase: 'bg-green-100 text-green-700' },
-    parcial: { label: 'Parcial', clase: 'bg-blue-100 text-blue-700' },
-    anulada: { label: 'Anulada', clase: 'bg-gray-100 text-gray-500' },
+    pendiente:  { label: 'Pendiente',  clase: 'bg-yellow-100 text-yellow-700' },
+    entregado:  { label: 'Entregado',  clase: 'bg-green-100 text-green-700' },
+    cobrada:    { label: 'Cobrada',    clase: 'bg-green-100 text-green-700' },
+    parcial:    { label: 'Parcial',    clase: 'bg-blue-100 text-blue-700' },
+    anulada:    { label: 'Anulada',    clase: 'bg-gray-100 text-gray-500' },
   }
+  const ESTADO_DEFAULT = { label: 'Desconocido', clase: 'bg-gray-100 text-gray-400' }
 
   const mesActual = new Date().toLocaleString('es-PE', { month: 'long', year: 'numeric' })
 
@@ -131,7 +133,7 @@ export default async function DashboardPage() {
               <p className="text-center text-gray-400 text-sm py-6">Sin notas de pedido</p>
             )}
             {ultimasNPs?.map((np) => {
-              const estado = ESTADO_CONFIG[np.estado]
+              const estado = ESTADO_CONFIG[np.estado] ?? ESTADO_DEFAULT
               return (
                 <Link
                   key={np.id}

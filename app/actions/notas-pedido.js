@@ -138,39 +138,46 @@ export async function crearNotaPedido(datos) {
   revalidatePath(`/clientes/${clienteId}`)
   revalidatePath('/productos')
 
-  // Retornar la NP completa para actualizar el estado local del modal
-  const { data: npCompleta } = await supabase
-    .from('notas_pedido')
-    .select(`
-      id, numero, numero_proforma, fecha, total, subtotal, igv,
-      estado, tipo_comprobante, numero_comprobante,
-      tipo_venta, comentario, cliente_id,
-      clientes!cliente_id(razon_social, nombre_whatsapp, num_doc, ruc),
-      notas_pedido_items!nota_pedido_id(id, codigo, descripcion, cantidad, precio_unitario, total)
-    `)
-    .eq('id', np.id)
-    .single()
+  // Retornar la NP completa — cliente se fetch por separado (join PostgREST no confiable)
+  const [{ data: npCompleta }, { data: clienteData }] = await Promise.all([
+    supabase
+      .from('notas_pedido')
+      .select(`
+        id, numero, numero_proforma, fecha, total, subtotal, igv,
+        estado, tipo_comprobante, numero_comprobante,
+        tipo_venta, comentario, cliente_id,
+        notas_pedido_items!nota_pedido_id(id, codigo, descripcion, cantidad, precio_unitario, total)
+      `)
+      .eq('id', np.id)
+      .single(),
+    supabase
+      .from('clientes')
+      .select('id, razon_social, nombre_whatsapp, tipo_doc, num_doc, ruc, direccion')
+      .eq('id', clienteId)
+      .single(),
+  ])
 
-  // Si el SELECT completo falla, devolver datos mínimos para no crashear el estado local
-  return {
-    np: npCompleta ?? {
-      id: np.id,
-      numero: np.numero,
-      numero_proforma: numeroProforma || null,
-      fecha,
-      total: totalConIgv,
-      subtotal: subtotalSinIgv,
-      igv,
-      estado: 'pendiente',
-      tipo_comprobante: 'ninguno',
-      numero_comprobante: null,
-      tipo_venta: tipoVenta || 'contado',
-      comentario: comentario || null,
-      cliente_id: clienteId,
-      clientes: null,
-      notas_pedido_items: [],
-    },
-  }
+  const npFinal = npCompleta
+    ? { ...npCompleta, clientes: clienteData ?? null }
+    : {
+        id: np.id,
+        numero: np.numero,
+        numero_proforma: numeroProforma || null,
+        fecha,
+        total: totalConIgv,
+        subtotal: subtotalSinIgv,
+        igv,
+        estado: 'pendiente',
+        tipo_comprobante: 'ninguno',
+        numero_comprobante: null,
+        tipo_venta: tipoVenta || 'contado',
+        comentario: comentario || null,
+        cliente_id: clienteId,
+        clientes: clienteData ?? null,
+        notas_pedido_items: [],
+      }
+
+  return { np: npFinal }
 }
 
 // Cambiar estado de una NP (pendiente → entregado, cualquiera → anulado)

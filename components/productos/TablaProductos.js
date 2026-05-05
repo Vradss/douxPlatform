@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { Eye, Pencil } from 'lucide-react'
 
 function formatearSoles(monto) {
   if (monto == null) return '—'
@@ -146,12 +147,17 @@ export default function TablaProductos({ productos, stockMap, esAdmin }) {
                     {formatearSoles(prod.precio_sunat)}
                   </td>
                   {esAdmin && (
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/productos/${prod.id}/editar`} className="text-gray-400 hover:text-[#4B5EEF] transition-colors" title="Editar">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 inline-block">
-                          <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
-                        </svg>
-                      </Link>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/productos/${prod.id}`} title="Ver detalle"
+                          className="p-1.5 rounded-lg text-[#4B5EEF] hover:bg-[#EBEEFF] transition-colors">
+                          <Eye size={18} />
+                        </Link>
+                        <Link href={`/productos/${prod.id}/editar`} title="Editar"
+                          className="p-1.5 rounded-lg text-[#4B5EEF] hover:bg-[#EBEEFF] transition-colors">
+                          <Pencil size={18} />
+                        </Link>
+                      </div>
                     </td>
                   )}
                 </tr>

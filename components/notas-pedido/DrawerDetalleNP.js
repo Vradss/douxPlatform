@@ -74,171 +74,263 @@ async function generarPDF(np, items, nombreUsuario) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF('p', 'mm', 'a4')
 
-  const W = 210, M = 10, CW = W - 2 * M
+  const W = 210, M = 10, CW = W - 2 * M  // CW = 190mm
   let y = M
 
-  const t = (str, x, yy, opts = {}) => doc.text(String(str ?? ''), x, yy, opts)
-  const bold = (on) => doc.setFont('helvetica', on ? 'bold' : 'normal')
-  const size = (s) => doc.setFontSize(s)
+  const t    = (str, x, yy, opts = {}) => doc.text(String(str ?? ''), x, yy, opts)
+  const bold  = (on) => doc.setFont('helvetica', on ? 'bold' : 'normal')
+  const size  = (s)  => doc.setFontSize(s)
   const color = (r, g, b) => doc.setTextColor(r, g, b)
-  const fill = (r, g, b) => doc.setFillColor(r, g, b)
-  const draw = (r, g, b) => doc.setDrawColor(r, g, b)
+  const fill  = (r, g, b) => doc.setFillColor(r, g, b)
+  const draw  = (r, g, b) => doc.setDrawColor(r, g, b)
+  const lw    = (w)       => doc.setLineWidth(w)
 
-  // ── HEADER ──────────────────────────────────────────────────────────────────
-  // Logo (izquierda)
-  color(75, 94, 239); bold(true); size(20)
-  t('Doux Bebe', M, y + 10)
-  color(180, 194, 255); bold(false); size(7)
-  t('Siempre contigo', M, y + 15)
+  // Color gris claro para todos los bordes (#CCCCCC)
+  const G = () => draw(204, 204, 204)
 
-  // Info empresa (centro)
-  color(26, 26, 46); bold(true); size(9)
-  t('CORPORACION DOUX BEBE E.I.R.L.', W / 2, y + 7, { align: 'center' })
+  // ── LOGO (SVG → canvas → PNG) ─────────────────────────────────────────────
+  const LOGO_W = 40, LOGO_H = LOGO_W * (196 / 438)
+  try {
+    const logoDataUrl = await new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width  = Math.round(LOGO_W * 3.78 * 3)
+        canvas.height = Math.round(LOGO_H * 3.78 * 3)
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/png'))
+      }
+      img.onerror = reject
+      img.src = '/logo_doux_bebe.svg'
+    })
+    doc.addImage(logoDataUrl, 'PNG', M, y + (30 - LOGO_H) / 2, LOGO_W, LOGO_H)
+  } catch {
+    color(75, 94, 239); bold(true); size(16)
+    t('Doux', M, y + 14)
+    bold(false); size(10)
+    t('Bébé', M, y + 21)
+  }
+
+  // ── INFO EMPRESA (centro) ─────────────────────────────────────────────────
+  const logoRegionW = 44, rucBW = 57
+  const cenX = M + logoRegionW + (CW - logoRegionW - rucBW) / 2
+
+  color(26, 26, 46); bold(true); size(8.5)
+  t('CORPORACION DOUX BÉBÈ E.I.R.L.', cenX, y + 6, { align: 'center' })
+  bold(false); size(6.5)
+  t('JR. COTABAMBAS NRO. 315 CERCADO DE LIMA LIMA - LIMA - LIMA', cenX, y + 11, { align: 'center' })
+  t('LIMA', cenX, y + 15, { align: 'center' })
+  t('998896666', cenX, y + 19, { align: 'center' })
+  t('Email: douxbebeperu@gmail.com', cenX, y + 23, { align: 'center' })
+
+  // ── CAJA RUC (derecha) ────────────────────────────────────────────────────
+  const bx = W - M - rucBW, bh = 30
+  G(); lw(0.5)
+  doc.rect(bx, y, rucBW, bh)
+  color(26, 26, 46); bold(true); size(7.5)
+  t('R.U.C. 20610532463', bx + rucBW / 2, y + 6, { align: 'center' })
+  G(); lw(0.3)
+  doc.line(bx, y + 9, bx + rucBW, y + 9)
+  size(9)
+  t('NOTA DE PEDIDO', bx + rucBW / 2, y + 15, { align: 'center' })
+  t('ELECTRONICA', bx + rucBW / 2, y + 21, { align: 'center' })
+  doc.line(bx, y + 23, bx + rucBW, y + 23)
+  size(11); color(26, 26, 46)
+  t(np.numero ?? '', bx + rucBW / 2, y + 29, { align: 'center' })
+
+  y += bh + 2
+
+  // ── SEPARADOR ─────────────────────────────────────────────────────────────
+  G(); lw(0.4)
+  doc.line(M, y, W - M, y)
+  y += 2
+
+  // ── DATOS DEL CLIENTE + FECHA BOX ─────────────────────────────────────────
+  const clientW = CW - 65, dateW = 65, clientH = 22
+  G(); lw(0.3)
+  doc.rect(M, y, clientW, clientH)
+  doc.rect(M + clientW, y, dateW, clientH)
+
+  color(26, 26, 46); bold(true); size(7.5)
+  t('DATOS DEL CLIENTE', M + 2, y + 5)
   bold(false); size(7)
-  t('JR. COTABAMBAS NRO. 315 CERCADO DE LIMA', W / 2, y + 12, { align: 'center' })
-  t('998896666  |  douxbebeperu@gmail.com', W / 2, y + 17, { align: 'center' })
 
-  // Caja RUC (derecha)
-  const bx = W - M - 55, bw = 55, bh = 32
-  draw(75, 94, 239); doc.setLineWidth(0.5)
-  doc.rect(bx, y, bw, bh)
-  color(26, 26, 46); bold(true); size(8)
-  t('R.U.C. 20610532463', bx + bw / 2, y + 6, { align: 'center' })
-  draw(200, 200, 220); doc.setLineWidth(0.3)
-  doc.line(bx, y + 9, bx + bw, y + 9)
-  size(7); bold(false)
-  t('NOTA DE PEDIDO', bx + bw / 2, y + 14, { align: 'center' })
-  t('ELECTRONICA', bx + bw / 2, y + 18, { align: 'center' })
-  doc.line(bx, y + 21, bx + bw, y + 21)
-  color(75, 94, 239); bold(true); size(11)
-  t(np.numero ?? '', bx + bw / 2, y + 28, { align: 'center' })
+  const tipoDoc = np.clientes?.tipo_doc || (np.clientes?.ruc && !np.clientes?.num_doc ? 'RUC' : 'DNI')
+  const numDoc  = np.clientes?.num_doc || np.clientes?.ruc || '—'
+  const direc   = np.clientes?.direccion || ''
 
-  y += 34
-  draw(180, 194, 255); doc.setLineWidth(0.4)
-  doc.line(M, y, W - M, y)
-  y += 5
+  t(`${tipoDoc}: ${numDoc}`, M + 2, y + 11)
+  t(`RAZÓN SOCIAL: ${(np.clientes?.razon_social ?? '—').slice(0, 50)}`, M + 2, y + 17)
+  t(`DIRECCIÓN: ${direc.slice(0, 55)}`, M + 2, y + 21.5)
 
-  // ── DATOS CLIENTE ────────────────────────────────────────────────────────────
-  color(26, 26, 46); bold(false); size(8)
-  const numDoc = np.clientes?.num_doc || np.clientes?.ruc || '—'
-  t(`DNI/RUC: ${numDoc}    RAZON SOCIAL: ${np.clientes?.razon_social ?? '—'}`, M, y)
-  y += 5
-  const condicion = (np.tipo_venta ?? 'contado').toUpperCase()
-  t(`FECHA EMISION: ${formatearFechaCorta(np.fecha)}    MONEDA: SOLES    CONDICION: ${condicion}`, M, y)
-  y += 5
-  t(`Guia Remision: —    Orden Compra: —    Caja: ${nombreUsuario ?? '—'}`, M, y)
-  y += 5
+  const dx = M + clientW + 2
+  bold(true); size(7)
+  t(`FECHA EMISION: ${formatearFechaCorta(np.fecha)}`, dx, y + 6)
+  t('MONEDA: SOLES', dx, y + 12)
+  const condicion = np.tipo_venta === 'credito' ? 'CRÉDITO / FE. VE.:' : (np.tipo_venta ?? 'contado').toUpperCase()
+  t(`CONDICION: ${condicion}`, dx, y + 18)
 
-  draw(180, 194, 255); doc.setLineWidth(0.3)
-  doc.line(M, y, W - M, y)
-  y += 4
+  y += clientH
 
-  // ── TABLA DE PRODUCTOS ───────────────────────────────────────────────────────
-  // Anchos columnas: # | CODIGO | DESCRIPCION | CANT | P.UNIT | TOTAL = 190mm
-  const cw = [10, 26, 84, 14, 28, 28]
+  // ── GUIA / ORDEN / CAJA ───────────────────────────────────────────────────
+  const guiaH = 6, g = CW / 3
+  G(); lw(0.3)
+  doc.rect(M, y, CW, guiaH)
+  doc.line(M + g, y, M + g, y + guiaH)
+  doc.line(M + 2 * g, y, M + 2 * g, y + guiaH)
+  color(26, 26, 46); bold(true); size(7)
+  t('Guía Remisión:', M + 2, y + 4)
+  t('Orden Compra:', M + g + 2, y + 4)
+  t(`Caja: ${nombreUsuario ?? '—'}`, M + 2 * g + 2, y + 4)
+  bold(false)
+  y += guiaH
+
+  // ── TABLA DE PRODUCTOS ────────────────────────────────────────────────────
+  // Anchos: # | CODIGO | DESCRIPCION | CANT. | PRECIO UNIT. | TOTAL = 190mm
+  const cw = [9, 22, 91, 14, 28, 26]
   const cx = [M]
   for (let i = 0; i < cw.length - 1; i++) cx.push(cx[i] + cw[i])
+  const rowH = 7
 
-  // Cabecera
-  fill(235, 238, 255); draw(235, 238, 255)
-  doc.rect(M, y, CW, 7, 'F')
+  // Cabecera tabla — fondo gris claro #F5F5F5
+  fill(245, 245, 245); G(); lw(0.3)
+  doc.rect(M, y, CW, rowH, 'F')
+  doc.rect(M, y, CW, rowH)
+  cw.forEach((_, i) => { if (i > 0) doc.line(cx[i], y, cx[i], y + rowH) })
   color(26, 26, 46); bold(true); size(7)
-  const hdr = ['#', 'CODIGO', 'DESCRIPCION', 'CANT.', 'P. UNIT.', 'TOTAL']
-  const aln = ['center', 'left', 'left', 'center', 'right', 'right']
-  hdr.forEach((h, i) => {
-    const hx = aln[i] === 'right' ? cx[i] + cw[i] - 1 :
-               aln[i] === 'center' ? cx[i] + cw[i] / 2 : cx[i] + 1
-    t(h, hx, y + 5, { align: aln[i] })
+  const hdrs = ['#', 'CODIGO', 'DESCRIPCION', 'CANT.', 'PRECIO UNIT.', 'TOTAL']
+  const alns = ['center', 'left', 'left', 'center', 'right', 'right']
+  hdrs.forEach((h, i) => {
+    const hx = alns[i] === 'right' ? cx[i] + cw[i] - 1.5
+             : alns[i] === 'center' ? cx[i] + cw[i] / 2 : cx[i] + 1.5
+    t(h, hx, y + 4.5, { align: alns[i] })
   })
-  y += 7
+  y += rowH
 
-  // Filas
-  bold(false); size(7)
-  items.forEach((item, idx) => {
-    if (idx % 2 === 1) { fill(247, 248, 248); doc.rect(M, y, CW, 7, 'F') }
-    draw(235, 238, 255); doc.setLineWidth(0.2)
-    doc.line(M, y + 7, W - M, y + 7)
-    color(26, 26, 46)
-    t(String(idx + 1), cx[0] + cw[0] / 2, y + 5, { align: 'center' })
-    color(75, 94, 239)
-    t((item.codigo ?? '—').slice(0, 12), cx[1] + 1, y + 5)
-    color(26, 26, 46)
-    t((item.descripcion ?? '').slice(0, 48), cx[2] + 1, y + 5)
-    t(String(item.cantidad ?? 0), cx[3] + cw[3] / 2, y + 5, { align: 'center' })
-    t(`S/ ${(item.precio_unitario ?? 0).toFixed(2)}`, cx[4] + cw[4] - 1, y + 5, { align: 'right' })
+  // Solo filas con productos (sin filas vacías)
+  items.forEach((item, ri) => {
+    if (ri % 2 === 1) { fill(250, 250, 250); doc.rect(M, y, CW, rowH, 'F') }
+    G(); lw(0.2)
+    doc.rect(M, y, CW, rowH)
+    cw.forEach((_, i) => { if (i > 0) doc.line(cx[i], y, cx[i], y + rowH) })
+    color(26, 26, 46); bold(false); size(7)
+    t(String(ri + 1), cx[0] + cw[0] / 2, y + 4.5, { align: 'center' })
+    t((item.codigo ?? '—').slice(0, 10), cx[1] + 1.5, y + 4.5)
+    t((item.descripcion ?? '').slice(0, 52), cx[2] + 1.5, y + 4.5)
+    t(String(item.cantidad ?? 0), cx[3] + cw[3] / 2, y + 4.5, { align: 'center' })
+    t((item.precio_unitario ?? 0).toFixed(2), cx[4] + cw[4] - 1.5, y + 4.5, { align: 'right' })
     bold(true)
-    t(`S/ ${(item.total ?? 0).toFixed(2)}`, cx[5] + cw[5] - 1, y + 5, { align: 'right' })
+    t((item.total ?? 0).toFixed(2), cx[5] + cw[5] - 1.5, y + 4.5, { align: 'right' })
     bold(false)
-    y += 7
+    y += rowH
   })
 
   y += 4
-  if (y > 225) { doc.addPage(); y = M }
 
-  draw(180, 194, 255); doc.setLineWidth(0.4)
-  doc.line(M, y, W - M, y)
-  y += 5
+  // ── PIE ───────────────────────────────────────────────────────────────────
+  const fY = y
+  const lcW = 124, rcX = M + lcW + 2, rcW = 64  // 124+2+64=190 ✓
 
-  // ── PIE: IZQUIERDO (monto letras + banco) y DERECHO (totales) ────────────────
-  const footerStartY = y
+  let ly = fY
 
-  // Totales (derecha)
-  const gravada = +(np.subtotal ?? (np.total / 1.18)).toFixed(2)
-  const igvMonto = +(np.igv ?? (np.total - gravada)).toFixed(2)
-  const tx = W - M - 60, tw = 60
-  const filasTotales = [
-    ['EXONERADA',  '0.00'],
-    ['INAFECTA',   '0.00'],
-    ['GRAVADA',    gravada.toFixed(2)],
-    ['IGV 18%',    igvMonto.toFixed(2)],
-    ['GRATUITA',   '0.00'],
-  ]
-
-  draw(180, 194, 255); doc.setLineWidth(0.3)
-  color(26, 26, 46); size(8)
-  filasTotales.forEach(([lbl, val], i) => {
-    const fy = footerStartY + i * 6
-    if (i % 2 === 1) { fill(247, 248, 248); doc.rect(tx, fy, tw, 6, 'F') }
-    bold(false); t(lbl, tx + 2, fy + 4)
-    bold(false); t(`S/ ${val}`, tx + tw - 2, fy + 4, { align: 'right' })
-  })
-  const totalY = footerStartY + filasTotales.length * 6
-  fill(235, 238, 255); doc.rect(tx, totalY, tw, 7, 'F')
-  draw(75, 94, 239); doc.rect(tx, totalY, tw, 7)
-  color(75, 94, 239); bold(true); size(9)
-  t('TOTAL', tx + 2, totalY + 5)
-  t(`S/ ${(np.total ?? 0).toFixed(2)}`, tx + tw - 2, totalY + 5, { align: 'right' })
-
-  // Izquierda
-  y = footerStartY
-  color(26, 26, 46); bold(true); size(8)
-  const letras = montoEnLetras(np.total ?? 0)
-  t(`SON: ${letras} SOLES`, M, y)
-  y += 5; bold(false); size(7)
-
-  if (np.numero_proforma) { t(`OBSERVACIONES: PROFORMA ${np.numero_proforma}`, M, y); y += 4 }
-  t('Representacion impresa de la Nota de pedido', M, y); y += 5
-
-  bold(true); t('CUENTAS BANCARIAS:', M, y); y += 4
+  // Caja SON
+  G(); lw(0.3)
+  doc.rect(M, ly, lcW, 7)
+  color(26, 26, 46); bold(true); size(7)
+  t('SON: ', M + 2, ly + 5)
+  const sonPfx = doc.getTextWidth('SON: ')
   bold(false)
-  t('INTERBANK SOLES CTA CTE: 200-300530316-6', M, y); y += 3.5
-  t('CCI: 003-200003005303166-39', M, y); y += 4
-  bold(true); t('YAPE: 998 896 666', M, y); y += 4
-  t('BCP SOLES CTA AHORROS: 191-744661130-94', M, y); y += 3.5
-  bold(false); t('CCI: 002-191174466113094-50', M, y); y += 6
+  t(montoEnLetras(np.total ?? 0) + ' SOLES', M + 2 + sonPfx, ly + 5)
+  ly += 7
 
+  // Caja OBSERVACIONES
+  if (np.numero_proforma) {
+    G(); lw(0.3)
+    doc.rect(M, ly, lcW, 7)
+    color(26, 26, 46); bold(true); size(7)
+    t('OBSERVACIONES: ', M + 2, ly + 5)
+    const obsPfx = doc.getTextWidth('OBSERVACIONES: ')
+    bold(false)
+    t(`PROFORMA ${np.numero_proforma}`, M + 2 + obsPfx, ly + 5)
+    ly += 7
+  }
+
+  // "Representacion impresa"
+  color(26, 26, 46); bold(false); size(6.5)
+  t('Representacion impresa de la Nota de pedido', M + 2, ly + 5)
+  ly += 7
+
+  // Cuentas bancarias
+  color(26, 26, 46); bold(true); size(7)
+  t('CUENTAS BANCARIAS (CORPORACION DOUX BÉBÈ E.I.R.L.)', M + 2, ly + 4)
+  ly += 5
+  bold(false); size(6.5)
+  t('INTERBANK SOLES CUENTA CORRIENTE:200-300530316-6', M + 2, ly + 4); ly += 4
+  t('CCI.: 003-200003005303166-39', M + 2, ly + 4); ly += 4
+  bold(true); t('YAPE SOLES NUMERO:998 896 666', M + 2, ly + 4); bold(false); ly += 4
+  t('BCP SOLES CUENTA AHORROS:CTA: 191-744661130-94', M + 2, ly + 4); ly += 4
+  t('CCI.: CCI: 002-191174466113094-50', M + 2, ly + 4); ly += 5
+
+  // Tabla CUOTA / IMPORTE / FECHA
+  const col3 = lcW / 3
+  G(); lw(0.3)
+  doc.rect(M, ly, lcW, 6)
+  doc.line(M + col3, ly, M + col3, ly + 6)
+  doc.line(M + 2 * col3, ly, M + 2 * col3, ly + 6)
+  bold(true); size(7); color(26, 26, 46)
+  t('CUOTA',   M + col3 / 2,            ly + 4, { align: 'center' })
+  t('IMPORTE', M + col3 + col3 / 2,     ly + 4, { align: 'center' })
+  t('FECHA',   M + 2 * col3 + col3 / 2, ly + 4, { align: 'center' })
+  ly += 6
+  doc.rect(M, ly, lcW, 6)
+  doc.line(M + col3, ly, M + col3, ly + 6)
+  doc.line(M + 2 * col3, ly, M + 2 * col3, ly + 6)
+  bold(false); t('1', M + col3 / 2, ly + 4, { align: 'center' })
+  ly += 8
+
+  // Usuario / Fecha hora
+  size(6); color(26, 26, 46)
+  t(`USUARIO: ${nombreUsuario ?? '—'}`, M + 2, ly + 3); ly += 4
   const ahora = new Date().toLocaleString('es-PE', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-  t(`USUARIO: ${nombreUsuario ?? '—'}    FECHA Y HORA: ${ahora}`, M, y); y += 5
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).replace(',', '')
+  t(`FECHA Y HORA DE EMISION: ${ahora}`, M + 2, ly + 3); ly += 5
 
-  color(75, 94, 239)
-  const frase = doc.splitTextToSize(
-    '"Eres la razon de nuestro trabajo diario. Tu compra es un voto de confianza... Gracias por tenernos en cuenta."',
-    115
-  )
-  doc.text(frase, M, y)
+  // ── COLUMNA DERECHA: TOTALES ──────────────────────────────────────────────
+  const gravada  = +(np.subtotal ?? (np.total / 1.18)).toFixed(2)
+  const igvMonto = +(np.igv ?? (np.total - gravada)).toFixed(2)
+  const filasTotales = [
+    ['EXONERADA', '0.00'],
+    ['INAFECTA',  '0.00'],
+    ['GRAVADA',   gravada.toFixed(2)],
+    ['IGV 18%',   igvMonto.toFixed(2)],
+    ['GRATUITA',  '0.00'],
+  ]
+  let ry = fY
+  G(); lw(0.3)
+  filasTotales.forEach(([lbl, val], i) => {
+    if (i % 2 === 1) { fill(248, 248, 248); doc.rect(rcX, ry, rcW, 6, 'F') }
+    doc.rect(rcX, ry, rcW, 6)
+    color(26, 26, 46); bold(false); size(7)
+    t(lbl, rcX + 2, ry + 4)
+    t(`S/ ${val}`, rcX + rcW - 2, ry + 4, { align: 'right' })
+    ry += 6
+  })
+  G(); lw(0.4); doc.rect(rcX, ry, rcW, 7)
+  bold(true); size(8.5)
+  t('TOTAL', rcX + 2, ry + 5)
+  t(`S/ ${(np.total ?? 0).toFixed(2)}`, rcX + rcW - 2, ry + 5, { align: 'right' })
+
+  // ── FRASE FINAL ───────────────────────────────────────────────────────────
+  const quoteY = Math.max(ly + 2, ry + 12)
+  G(); lw(0.3)
+  doc.rect(M, quoteY, CW, 18)
+  color(26, 26, 46); size(10); bold(false)
+  t('"Eres la razón de nuestro trabajo diario.', W / 2, quoteY + 6,  { align: 'center' })
+  size(8)
+  t('"Tu compra es un voto de confianza...', W / 2, quoteY + 11, { align: 'center' })
+  t('Gracias por tenernos en cuenta."',     W / 2, quoteY + 16, { align: 'center' })
 
   doc.save(`${np.numero ?? 'NP'}.pdf`)
 }
